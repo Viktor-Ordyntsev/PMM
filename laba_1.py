@@ -1,49 +1,44 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Параметры задачи
-h = 0.02  # Шаг по пространству
-tau = 0.0001  # Шаг по времени
-L = 1  # Длина стержня
-T_max = 2 # Время моделирования
+# Заданные параметры
+L = 1.0  # длина стержня
+T_max = 4.0  # конечное время
+h = 0.02  # шаг по пространству
+tau = 0.0001  # шаг по времени (для стабильности явной схемы)
+x = np.arange(0, L + h, h)  # сетка по пространству
+t = np.arange(0, T_max + tau, tau)  # сетка по времени
+N_x = len(x)
+N_t = len(t)
 
-# Число шагов по пространству и времени
-N = int(L / h)
-M = int(T_max / tau)
+# Явная схема
+alpha = tau / h**2
+T_explicit = np.zeros((N_t, N_x))
 
-# Коэффициент схемы
-r = tau / h**2
+# Начальные условия
+T_explicit[0, :] = 0
 
-# Инициализация сетки
-T = np.zeros((M+1, N+1))
+# Функция для граничных условий на левой границе
+def left_boundary(ti):
+    return ti / (1 + ti)
 
-# Начальные условия T(x, 0) = 0 уже заданы нулями
-
-# Итерации по времени
-for n in range(M):
-    # Граничное условие в точке x=1: T(1, t) = 0
-    T[n+1, N] = 0
+# Явная схема
+for n in range(0, N_t - 1):
+    for i in range(1, N_x - 1):
+        T_explicit[n + 1, i] = T_explicit[n, i] + alpha * (T_explicit[n, i - 1] - 2 * T_explicit[n, i] + T_explicit[n, i + 1])
     
-    # Граничное условие T_x(0, t) = -1 -> T_0 = T_1 + h
-    T[n+1, 0] = T[n+1, 1] + h
-    
-    # Основное уравнение для внутренних точек
-    for i in range(1, N):
-        T[n+1, i] = T[n, i] + r * (T[n, i+1] - 2*T[n, i] + T[n, i-1])
+    # Граничные условия
+    T_explicit[n + 1, 0] = left_boundary(t[n + 1])  # T(0, t) = t / (1 + t)
+    T_explicit[n + 1, -1] = 0  # T(1, t) = 0
 
-# Построение графика температурного распределения в разные моменты времени
-x = np.linspace(0, L, N+1)
+# Построение графиков для нескольких моментов времени
+plt.figure(figsize=(10, 6))
+for time_step in [0, int(1/tau), int(2/tau), int(3/tau), int(4/tau)]:
+    plt.plot(x, T_explicit[time_step, :], label=f't = {time_step * tau:.1f} s')
 
-plt.figure(figsize=(10,6))
-
-time_steps = [0, M//10, M//5, M//2, M]  # Моменты времени для графика
-
-for n in time_steps:
-    plt.plot(x, T[n, :], label=f't={n*tau:.2f} s')
-
+plt.title('Решение уравнения теплопроводности - явная схема')
 plt.xlabel('x')
-plt.ylabel('T(x, t)')
+plt.ylabel('T(x,t)')
 plt.legend()
-plt.title('Распределение температуры вдоль стержня на различных временных шагах')
 plt.grid(True)
 plt.show()
