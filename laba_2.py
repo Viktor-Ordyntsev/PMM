@@ -1,59 +1,91 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.linalg import solve_banded
+from matplotlib.animation import FuncAnimation
+from mpl_toolkits.mplot3d import Axes3D
 
-# Заданные параметры
-L = 1.0  # длина стержня
-T_max = 4.0  # конечное время
-h = 0.02  # шаг по пространству
-tau = 0.0001  # шаг по времени
-x = np.arange(0, L + h, h)  # сетка по пространству
-t = np.arange(0, T_max + tau, tau)  # сетка по времени
-N_x = len(x)
-N_t = len(t)
+# Параметры задачи
+L = 1.0       
+T_max = 1  
+alpha = 0.5     
+N = 200         
+       
+h = L / (N - 1)         
+tau = h**2 / (2 * alpha)
 
-# Коэффициент alpha
-alpha = tau / h**2
+M = int(T_max / tau)
 
-# Инициализация решения
-T_implicit = np.zeros((N_t, N_x))
 
-# Начальные условия: T(x, 0) = 0
-T_implicit[0, :] = 0
+x = np.linspace(0, L, N)
+t = np.linspace(0, T_max, M)
 
-# Функция для граничного условия на левой границе
-def left_boundary(ti):
-    return ti / (1 + ti)
 
-# Коэффициенты для трехдиагональной матрицы
-a = -alpha
-b = 1 + 2 * alpha
-c = -alpha
+T = np.zeros((M, N))
 
-# Создание матрицы для метода прогонки
-A = np.zeros((3, N_x))
-A[0, 1:] = c  # верхняя диагональ
-A[1, :] = b  # главная диагональ
-A[2, :-1] = a  # нижняя диагональ
 
-# Неявная схема
-for n in range(0, N_t - 1):
-    # Правая часть уравнения: предыдущий временной слой
-    d = T_implicit[n, :].copy()
+T[0, :] = 0
 
-    # Граничные условия
-    d[0] = left_boundary(t[n + 1])
-    d[-1] = 0
 
-    # Решение системы уравнений методом прогонки
-    T_implicit[n + 1, :] = solve_banded((1, 1), A, d)
+for n in range(M - 1):
+    
+    A = np.zeros(N)
+    B = np.zeros(N)
+    
+    
+    A[1] = 0
+    B[1] = -1 
+    
+    for i in range(1, N - 1):
+        A[i + 1] = (tau*alpha) / (h*h + (tau*alpha) * (2 - A[i]))
+        B[i + 1] = (h*h * T[n, i] + (tau*alpha)* B[i] ) / (h*h + (tau*alpha) * (2 - A[i]))
+        
+    
+    
+    T_next = np.zeros(N)
+    T_next[0] = -1
 
-# Построение графиков для нескольких моментов времени
+    
+    for i in range(N - 2, 0, -1):
+        T_next[i] = A[i+1] * T_next[i + 1] + B[i+1]
+    
+    
+    T_next = np.maximum(T_next, -1) 
+    T[n + 1, :] = T_next
+
+
+# fig = plt.figure(figsize=(12, 6))
+
+
+# ax1 = fig.add_subplot(121, projection='3d')
+# X, Y = np.meshgrid(x,t)
+# ax1.plot_surface(X, Y, T, cmap='hot')
+# ax1.set_xlabel("Положение x вдоль стержня")
+# ax1.set_ylabel("Время, t")
+# ax1.set_zlabel("Температура")
+# ax1.set_title("Распределение температуры (3D)")
+
+# ax2 = fig.add_subplot(122)
+# cax = ax2.imshow(T, extent=[0, L, 0, T_max], aspect='auto', origin='lower', cmap='hot')
+# ax2.set_xlabel("Положение x вдоль стержня")
+# ax2.set_ylabel("Время, t")
+# ax2.set_title("Распределение температуры (2D)")
+# fig.colorbar(cax, ax=ax2, label="Температура")
+
+# def update(frame):
+#     cax.set_array(T[:frame, :])
+#     return cax,
+
+# ani = FuncAnimation(fig, update, frames=M, interval=50, blit=True)
+
+# plt.tight_layout()
+# plt.show()
+
 plt.figure(figsize=(10, 6))
-for time_step in [0, int(1/tau), int(2/tau), int(3/tau), int(4/tau)]:
-    plt.plot(x, T_implicit[time_step, :], label=f't = {time_step * tau:.1f} s')
+time_steps = np.arange(0, 0.55, 0.05)
+for time_step in time_steps:
+    index = int(time_step / tau)
+    plt.plot(x, T[index, :], label=f't = {time_step:.2f} s')
 
-plt.title('Решение уравнения теплопроводности - неявная схема')
+plt.title('Решение уравнения теплопроводности - НЕявная схема')
 plt.xlabel('x')
 plt.ylabel('T(x,t)')
 plt.legend()
