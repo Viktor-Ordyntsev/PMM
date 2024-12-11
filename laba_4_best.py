@@ -18,7 +18,7 @@ y = np.linspace(-y_len, y_len, grid_size)
 x, y = np.meshgrid(x, y)
 
 def concentration(x, y, wind_speed, wind_direction, D_min, D_max, C_min, D0, z_p):
-    Q = 1  # источник выброса (условная единица)
+    Q = 1  
     
     x_rot = x * np.cos(wind_direction) + y * np.sin(wind_direction)
     y_rot = -x * np.sin(wind_direction) + y * np.cos(wind_direction)
